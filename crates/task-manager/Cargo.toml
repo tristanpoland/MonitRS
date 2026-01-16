@@ -1,0 +1,28 @@
+[package]
+name = "task-manager"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "task-manager"
+path = "src/main.rs"
+
+[dependencies]
+gpui-component = { workspace = true }
+gpui-component-macros = { workspace = true }
+gpui = { workspace = true }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# System monitoring
+sysinfo = "0.33"
+num_cpus = "1.16"
+chrono = "0.4"
+
+# Logging
+env_logger = "0.11"
+
+[dev-dependencies]
+gpui = { workspace = true, features = ["test-support"] }
