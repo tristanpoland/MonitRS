@@ -76,15 +76,15 @@ impl TaskManagerApp {
         let performance_tab = self.performance_tab.clone();
         let app_details_tab = self.app_details_tab.clone();
 
-        let task = cx.spawn(move |this, mut cx| async move {
+        let task = cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor().timer(std::time::Duration::from_secs(1)).await;
 
-                let _ = this.update(cx, |this, cx: &mut Context<TaskManagerApp>| {
+                let _ = this.update(cx, |this, cx| {
                     this.monitor.update();
                     let snapshot = this.monitor.snapshot();
 
-                    processes_tab.update(cx, |tab, _cx| {
+                    processes_tab.update(cx, |tab, cx| {
                         tab.update_processes(snapshot.processes.clone(), cx);
                     });
 
