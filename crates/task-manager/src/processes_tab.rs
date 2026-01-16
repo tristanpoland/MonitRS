@@ -1,7 +1,8 @@
-use gpui::{App, AppContext, Context, div, Entity, IntoElement, ParentElement, Render, Styled, Window, InteractiveElement};
+use gpui::{App, AppContext, Context, div, Entity, IntoElement, ParentElement, Render, Styled, Window, Subscription};
 use gpui_component::{
     table::{TableDelegate, TableState, Table, Column, ColumnSort},
-    v_flex, StyledExt,
+    input::{InputState, Input, InputEvent},
+    v_flex, h_flex, StyledExt,
 };
 
 use crate::system_monitor::{ProcessInfo, format_bytes};
@@ -49,6 +50,8 @@ impl ProcessColumn {
 
 pub struct ProcessesTableDelegate {
     processes: Vec<ProcessInfo>,
+    filtered_processes: Vec<ProcessInfo>,
+    filter_query: String,
     sort_column: ProcessColumn,
     sort_ascending: bool,
 }
@@ -57,22 +60,47 @@ impl ProcessesTableDelegate {
     pub fn new(processes: Vec<ProcessInfo>) -> Self {
         let mut delegate = Self {
             processes,
+            filtered_processes: Vec::new(),
+            filter_query: String::new(),
             sort_column: ProcessColumn::Cpu,
             sort_ascending: false,
         };
+        delegate.apply_filter();
         delegate.sort();
         delegate
     }
 
     pub fn update_processes(&mut self, processes: Vec<ProcessInfo>) {
         self.processes = processes;
+        self.apply_filter();
         self.sort();
+    }
+
+    pub fn set_filter(&mut self, query: String) {
+        self.filter_query = query.to_lowercase();
+        self.apply_filter();
+        self.sort();
+    }
+
+    fn apply_filter(&mut self) {
+        if self.filter_query.is_empty() {
+            self.filtered_processes = self.processes.clone();
+        } else {
+            self.filtered_processes = self.processes
+                .iter()
+                .filter(|p| {
+                    p.name.to_lowercase().contains(&self.filter_query) ||
+                    p.pid.to_string().contains(&self.filter_query)
+                })
+                .cloned()
+                .collect();
+        }
     }
 
     fn sort(&mut self) {
         match self.sort_column {
             ProcessColumn::Name => {
-                self.processes.sort_by(|a, b| {
+                self.filtered_processes.sort_by(|a, b| {
                     if self.sort_ascending {
                         a.name.cmp(&b.name)
                     } else {
@@ -81,7 +109,7 @@ impl ProcessesTableDelegate {
                 });
             }
             ProcessColumn::Pid => {
-                self.processes.sort_by(|a, b| {
+                self.filtered_processes.sort_by(|a, b| {
                     if self.sort_ascending {
                         a.pid.cmp(&b.pid)
                     } else {
@@ -90,7 +118,7 @@ impl ProcessesTableDelegate {
                 });
             }
             ProcessColumn::Cpu => {
-                self.processes.sort_by(|a, b| {
+                self.filtered_processes.sort_by(|a, b| {
                     if self.sort_ascending {
                         a.cpu_usage.partial_cmp(&b.cpu_usage).unwrap()
                     } else {
@@ -99,7 +127,7 @@ impl ProcessesTableDelegate {
                 });
             }
             ProcessColumn::Memory => {
-                self.processes.sort_by(|a, b| {
+                self.filtered_processes.sort_by(|a, b| {
                     if self.sort_ascending {
                         a.memory.cmp(&b.memory)
                     } else {
@@ -108,7 +136,7 @@ impl ProcessesTableDelegate {
                 });
             }
             ProcessColumn::Disk => {
-                self.processes.sort_by(|a, b| {
+                self.filtered_processes.sort_by(|a, b| {
                     if self.sort_ascending {
                         a.disk_usage.cmp(&b.disk_usage)
                     } else {
@@ -126,7 +154,7 @@ impl TableDelegate for ProcessesTableDelegate {
     }
 
     fn rows_count(&self, _cx: &App) -> usize {
-        self.processes.len()
+        self.filtered_processes.len()
     }
 
     fn column(&self, col_ix: usize, _cx: &App) -> Column {
@@ -152,7 +180,7 @@ impl TableDelegate for ProcessesTableDelegate {
         _window: &mut Window,
         _cx: &mut Context<TableState<Self>>,
     ) -> impl IntoElement {
-        let process = &self.processes[row_ix];
+        let process = &self.filtered_processes[row_ix];
         let all_columns = ProcessColumn::all();
         let column = all_columns.get(col_ix).unwrap();
 
@@ -188,6 +216,8 @@ impl TableDelegate for ProcessesTableDelegate {
 
 pub struct ProcessesTab {
     table_state: Entity<TableState<ProcessesTableDelegate>>,
+    search_input: Entity<InputState>,
+    _subscription: Subscription,
 }
 
 impl ProcessesTab {
@@ -195,7 +225,26 @@ impl ProcessesTab {
         let delegate = ProcessesTableDelegate::new(processes);
         let table_state = cx.new(|cx| TableState::new(delegate, window, cx));
 
-        Self { table_state }
+        let search_input = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("Search processes by name or PID...")
+        });
+
+        let _subscription = cx.subscribe_in(&search_input, window, Self::on_search_input);
+
+        Self {
+            table_state,
+            search_input,
+            _subscription,
+        }
+    }
+
+    fn on_search_input(&mut self, _: &Entity<InputState>, _event: &InputEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        let query = self.search_input.read(cx).value();
+        self.table_state.update(cx, |state, _cx| {
+            state.delegate_mut().set_filter(query.to_string());
+        });
+        cx.notify();
     }
 
     pub fn update_processes(&mut self, processes: Vec<ProcessInfo>, cx: &mut App) {
@@ -212,10 +261,20 @@ impl Render for ProcessesTab {
             .p_4()
             .gap_4()
             .child(
-                div()
-                    .text_xl()
-                    .font_semibold()
-                    .child("Processes")
+                h_flex()
+                    .justify_between()
+                    .items_center()
+                    .child(
+                        div()
+                            .text_xl()
+                            .font_semibold()
+                            .child("Processes")
+                    )
+                    .child(
+                        div()
+                            .w_64()
+                            .child(Input::new(&self.search_input))
+                    )
             )
             .child(
                 div()
