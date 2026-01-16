@@ -1,4 +1,4 @@
-use gpui::{App, AppContext, Context, div, Entity, IntoElement, ParentElement, Render, Styled, Window};
+use gpui::{App, AppContext, Context, div, Entity, IntoElement, ParentElement, Render, Styled, Window, InteractiveElement};
 use gpui_component::{
     table::{TableDelegate, TableState, Table, Column, ColumnSort},
     v_flex, StyledExt,

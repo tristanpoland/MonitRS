@@ -1,4 +1,4 @@
-use gpui::{Context, div, IntoElement, ParentElement, Render, SharedString, Styled, Window};
+use gpui::{Context, div, IntoElement, ParentElement, Render, SharedString, Styled, Window, px};
 use gpui_component::{
     chart::{LineChart, AreaChart},
     h_flex, v_flex, ActiveTheme, StyledExt,
@@ -147,6 +147,7 @@ impl Render for PerformanceTab {
                             .child(
                                 div()
                                     .flex_1()
+                                    .min_h(px(200.0))
                                     .border_1()
                                     .border_color(cx.theme().border)
                                     .rounded(cx.theme().radius)
@@ -188,6 +189,7 @@ impl Render for PerformanceTab {
                             .child(
                                 div()
                                     .flex_1()
+                                    .min_h(px(200.0))
                                     .border_1()
                                     .border_color(cx.theme().border)
                                     .rounded(cx.theme().radius)
@@ -225,6 +227,7 @@ impl Render for PerformanceTab {
                             .child(
                                 div()
                                     .flex_1()
+                                    .min_h(px(200.0))
                                     .border_1()
                                     .border_color(cx.theme().border)
                                     .rounded(cx.theme().radius)
@@ -257,6 +260,7 @@ impl Render for PerformanceTab {
                             .child(
                                 div()
                                     .flex_1()
+                                    .min_h(px(200.0))
                                     .border_1()
                                     .border_color(cx.theme().border)
                                     .rounded(cx.theme().radius)
