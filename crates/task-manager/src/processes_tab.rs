@@ -54,16 +54,26 @@ pub struct ProcessesTableDelegate {
     filter_query: String,
     sort_column: ProcessColumn,
     sort_ascending: bool,
+    columns: Vec<Column>,
 }
 
 impl ProcessesTableDelegate {
     pub fn new(processes: Vec<ProcessInfo>) -> Self {
+        let columns = vec![
+            Column::new("name", "Name").width(250.0).sortable(),
+            Column::new("pid", "PID").width(100.0).sortable(),
+            Column::new("cpu", "CPU %").width(120.0).sortable(),
+            Column::new("memory", "Memory").width(150.0).sortable(),
+            Column::new("disk", "Disk").width(150.0).sortable(),
+        ];
+
         let mut delegate = Self {
             processes,
             filtered_processes: Vec::new(),
             filter_query: String::new(),
             sort_column: ProcessColumn::Cpu,
             sort_ascending: false,
+            columns,
         };
         delegate.apply_filter();
         delegate.sort();
@@ -158,19 +168,7 @@ impl TableDelegate for ProcessesTableDelegate {
     }
 
     fn column(&self, col_ix: usize, _cx: &App) -> Column {
-        let all_columns = ProcessColumn::all();
-        let col = all_columns.get(col_ix).unwrap();
-        let width = match col {
-            ProcessColumn::Name => 250.0,
-            ProcessColumn::Pid => 100.0,
-            ProcessColumn::Cpu => 120.0,
-            ProcessColumn::Memory => 150.0,
-            ProcessColumn::Disk => 150.0,
-        };
-
-        Column::new(col.key(), col.label())
-            .width(width)
-            .sortable()
+        self.columns[col_ix].clone()
     }
 
     fn render_td(
@@ -200,7 +198,7 @@ impl TableDelegate for ProcessesTableDelegate {
         col_ix: usize,
         sort: ColumnSort,
         _window: &mut Window,
-        _cx: &mut Context<TableState<Self>>,
+        cx: &mut Context<TableState<Self>>,
     ) {
         if let Some(column) = ProcessColumn::all().get(col_ix) {
             self.sort_column = *column;
@@ -210,6 +208,7 @@ impl TableDelegate for ProcessesTableDelegate {
                 ColumnSort::Default => false,
             };
             self.sort();
+            cx.notify();
         }
     }
 }
@@ -223,7 +222,10 @@ pub struct ProcessesTab {
 impl ProcessesTab {
     pub fn new(processes: Vec<ProcessInfo>, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let delegate = ProcessesTableDelegate::new(processes);
-        let table_state = cx.new(|cx| TableState::new(delegate, window, cx));
+        let table_state = cx.new(|cx| {
+            TableState::new(delegate, window, cx)
+                .sortable(true)
+        });
 
         let search_input = cx.new(|cx| {
             InputState::new(window, cx)
